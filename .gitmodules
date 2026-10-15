@@ -10,3 +10,6 @@
 [submodule "tools/third_party/map-anything"]
 	path = tools/third_party/map-anything
 	url = https://github.com/facebookresearch/map-anything.git
+[submodule "tools/third_party/scene_diff"]
+	path = tools/third_party/scene_diff
+	url = https://github.com/yuqunw/scene_diff.git
