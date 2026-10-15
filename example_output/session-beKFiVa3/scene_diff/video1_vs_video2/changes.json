@@ -1,0 +1,375 @@
+{
+  "videos": [
+    "/workspace/SpatialClaw/video_data/video1_indoor.mp4",
+    "/workspace/SpatialClaw/video_data/video2_indoor.mp4"
+  ],
+  "num_frames": [
+    8,
+    9
+  ],
+  "frame_times_sec": [
+    [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0
+    ],
+    [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0,
+      7.0,
+      8.0
+    ]
+  ],
+  "scene_extent": 1.1004204069864276,
+  "coordinate_frame": "gravity-aligned, x right, y forward, z up, origin = video 1 first camera; up-to-scale units",
+  "objects": [
+    {
+      "id": 0,
+      "change_type": "Removed",
+      "label": "mug (left side)",
+      "description": "Mug with skull design was on the left side of the table in video1, removed/moved to right side in video2",
+      "frames_1": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "frames_2": [],
+      "best_time_1": 3.0,
+      "best_time_2": null,
+      "centroid_1": [
+        -0.1564,
+        0.3341,
+        -0.063
+      ],
+      "centroid_2": null,
+      "bbox_1": [
+        [
+          -0.193,
+          0.3145,
+          -0.0898
+        ],
+        [
+          -0.1401,
+          0.351,
+          -0.0388
+        ]
+      ],
+      "bbox_2": null,
+      "displacement": null,
+      "score": 0.7418
+    },
+    {
+      "id": 1,
+      "change_type": "Moved",
+      "label": "green grapes container",
+      "description": "Container of green grapes moved from center of table (near bottle) to right side of table",
+      "frames_1": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "frames_2": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "best_time_1": 4.0,
+      "best_time_2": 5.0,
+      "centroid_1": [
+        -0.1531,
+        0.4373,
+        0.0048
+      ],
+      "centroid_2": [
+        0.197,
+        0.395,
+        -0.0293
+      ],
+      "bbox_1": [
+        [
+          -0.1977,
+          0.3886,
+          -0.0362
+        ],
+        [
+          -0.1351,
+          0.4759,
+          0.0374
+        ]
+      ],
+      "bbox_2": [
+        [
+          0.166,
+          0.365,
+          -0.0616
+        ],
+        [
+          0.2461,
+          0.4629,
+          0.0056
+        ]
+      ],
+      "displacement": [
+        0.3501,
+        -0.0423,
+        -0.0341
+      ],
+      "score": 0.7977
+    },
+    {
+      "id": 2,
+      "change_type": "Removed",
+      "label": "false positive",
+      "description": "Partial detection of grapes container, duplicate of #1",
+      "frames_1": [
+        0,
+        1,
+        2
+      ],
+      "frames_2": [],
+      "best_time_1": 0.0,
+      "best_time_2": null,
+      "centroid_1": [
+        -0.1652,
+        0.4305,
+        0.0025
+      ],
+      "centroid_2": null,
+      "bbox_1": [
+        [
+          -0.1832,
+          0.4133,
+          -0.0099
+        ],
+        [
+          -0.1488,
+          0.4514,
+          0.0153
+        ]
+      ],
+      "bbox_2": null,
+      "displacement": null,
+      "score": 0.6534
+    },
+    {
+      "id": 3,
+      "change_type": "Removed",
+      "label": "false positive",
+      "description": "Detection under table edge, not a real object change",
+      "frames_1": [
+        0,
+        1
+      ],
+      "frames_2": [],
+      "best_time_1": 1.0,
+      "best_time_2": null,
+      "centroid_1": [
+        -0.1844,
+        0.5054,
+        -0.1894
+      ],
+      "centroid_2": null,
+      "bbox_1": [
+        [
+          -0.2859,
+          0.4923,
+          -0.2499
+        ],
+        [
+          -0.1473,
+          0.6236,
+          -0.1806
+        ]
+      ],
+      "bbox_2": null,
+      "displacement": null,
+      "score": 0.4996
+    },
+    {
+      "id": 4,
+      "change_type": "Added",
+      "label": "mug (right side)",
+      "description": "Same mug now on right side of table in video2 (moved from left)",
+      "frames_1": [],
+      "frames_2": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "best_time_1": null,
+      "best_time_2": 6.0,
+      "centroid_1": null,
+      "centroid_2": [
+        0.1172,
+        0.3659,
+        -0.0436
+      ],
+      "bbox_1": null,
+      "bbox_2": [
+        [
+          0.0884,
+          0.3467,
+          -0.0733
+        ],
+        [
+          0.1384,
+          0.445,
+          -0.0038
+        ]
+      ],
+      "displacement": null,
+      "score": 0.8088
+    },
+    {
+      "id": 5,
+      "change_type": "Added",
+      "label": "ear protection",
+      "description": "Clear plastic ear protection added on table next to the bottle in video2",
+      "frames_1": [],
+      "frames_2": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        7,
+        8
+      ],
+      "best_time_1": null,
+      "best_time_2": 3.0,
+      "centroid_1": null,
+      "centroid_2": [
+        -0.1239,
+        0.4389,
+        -0.011
+      ],
+      "bbox_1": null,
+      "bbox_2": [
+        [
+          -0.1539,
+          0.4192,
+          -0.0326
+        ],
+        [
+          -0.1113,
+          0.4536,
+          0.0017
+        ]
+      ],
+      "displacement": null,
+      "score": 0.4835
+    },
+    {
+      "id": 6,
+      "change_type": "Added",
+      "label": "false positive",
+      "description": "Partial detection of right side area with grapes/mouse, duplicate of #1",
+      "frames_1": [],
+      "frames_2": [
+        4,
+        5
+      ],
+      "best_time_1": null,
+      "best_time_2": 4.0,
+      "centroid_1": null,
+      "centroid_2": [
+        0.1596,
+        0.4106,
+        -0.038
+      ],
+      "bbox_1": null,
+      "bbox_2": [
+        [
+          0.087,
+          0.3602,
+          -0.1641
+        ],
+        [
+          0.2221,
+          0.4972,
+          0.0187
+        ]
+      ],
+      "displacement": null,
+      "score": 0.4728
+    },
+    {
+      "id": 7,
+      "change_type": "Added",
+      "label": "false positive",
+      "description": "Detection on laptop screen area, not a real object change",
+      "frames_1": [],
+      "frames_2": [
+        4
+      ],
+      "best_time_1": null,
+      "best_time_2": 4.0,
+      "centroid_1": null,
+      "centroid_2": [
+        -0.1133,
+        0.4331,
+        -0.0208
+      ],
+      "bbox_1": null,
+      "bbox_2": [
+        [
+          -0.1251,
+          0.4118,
+          -0.0411
+        ],
+        [
+          -0.0639,
+          0.4819,
+          0.0093
+        ]
+      ],
+      "displacement": null,
+      "score": 0.4028
+    }
+  ],
+  "files": {
+    "scene_shared": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/scene_shared.ply",
+    "scene_video1": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/scene_video1.ply",
+    "scene_video2": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/scene_video2.ply",
+    "scene_vis": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/scene_vis.npz",
+    "changes_highlight": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/changes_highlight.ply",
+    "raw_object_masks": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/scenediff_raw/object_masks.pkl",
+    "raw_cost_map_merged": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/scenediff_raw/cost_map_merged.ply",
+    "raw_cost_map_1": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/scenediff_raw/cost_map_1.ply",
+    "raw_cost_map_2": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/scenediff_raw/cost_map_2.ply",
+    "raw_object_instances_1": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/scenediff_raw/object_instances_1.ply",
+    "raw_object_instances_2": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/scenediff_raw/object_instances_2.ply",
+    "render_topdown": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/render_topdown.png",
+    "render_oblique": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/render_oblique.png",
+    "render_crops": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/render_crops.png",
+    "changes_json": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/changes.json",
+    "report": "/workspace/SpatialClaw/spatial_agent/work_dir/custom_qwen3.6-27b/session-beKFiVa3/scene_diff/video1_vs_video2/report.md"
+  },
+  "summary": "\nKey differences between video1 and video2:\n1. Mug moved: The skull-design mug was on the LEFT side of the table in video1, moved to the RIGHT side in video2.\n2. Grapes container moved: The clear container of green grapes was near the center (next to the bottle) in video1, moved to the RIGHT side in video2.\n3. Ear protection added: A pair of clear plastic ear protection was placed on the table next to the bottle in video2.\n4. Wooden fork added: A small wooden fork/spatula was placed next to the bottle in video2 (not detected by SceneDiff due to small size).\n"
+}
