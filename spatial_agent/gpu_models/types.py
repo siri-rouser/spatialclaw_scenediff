@@ -194,3 +194,50 @@ class SAM3VideoSegmentationOutput(AgentContext):
     def to_message_content(self) -> str:
         n_obj = len(self.object_ids) if self.object_ids else 0
         return f"SAM3 tracked {n_obj} object(s) across {self.num_frames} frames"
+
+
+# ---------------------------------------------------------------------------
+# SceneDiff outputs (two-video 3D change detection)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SceneDiffObject(AgentContext):
+    """One changed object. ``*_1`` fields refer to video 1, ``*_2`` to video 2.
+
+    Coordinates are in the shared (up-to-scale) Pi3 world frame of both videos.
+    """
+    id: int = 0
+    change_type: str = ""        # "Added" | "Removed" | "Moved"
+    frames_1: List[int] = None   # local indices of the sampled frames showing it
+    frames_2: List[int] = None
+    best_time_1: Optional[float] = None   # seconds into video 1 of the clearest view
+    best_time_2: Optional[float] = None
+    centroid_1: Optional[List[float]] = None
+    centroid_2: Optional[List[float]] = None
+    bbox_1: Optional[List[List[float]]] = None   # [[xmin,ymin,zmin],[xmax,ymax,zmax]]
+    bbox_2: Optional[List[List[float]]] = None
+    displacement: Optional[List[float]] = None   # centroid_2 - centroid_1 (Moved only)
+    score: float = 0.0           # mean normalized change cost
+    label: str = ""              # semantic label (filled in by Annotate)
+    description: str = ""
+    crop_1: Any = None           # PIL.Image or None
+    crop_2: Any = None
+    context_1: Any = None        # full frame with the object outlined
+    context_2: Any = None
+
+
+@dataclass
+class SceneDiffOutput(AgentContext):
+    """Result of comparing two videos with SceneDiff."""
+    objects: List[SceneDiffObject] = None
+    output_dir: str = ""
+    files: Dict[str, str] = None
+    render_topdown: Any = None   # PIL.Image
+    render_oblique: Any = None   # PIL.Image
+    num_frames: List[int] = None # frames used per video
+    scene_extent: float = 1.0    # robust scene diameter in world units
+    runtime_sec: float = 0.0
+
+    def to_message_content(self) -> str:
+        n = len(self.objects) if self.objects else 0
+        return f"SceneDiff: {n} changed object(s), outputs in {self.output_dir}"

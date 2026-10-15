@@ -230,6 +230,7 @@ class GPUTool:
     """
 
     TOOL_PROMPT_DESCRIPTION: str = ""  # Override in subclasses
+    HTTP_TIMEOUT: float = _HTTP_TIMEOUT  # per-request; long-running tools override
 
     def __init__(self, deployment_name: str = "", gpu_tool_max_retries: int = 3):
         self._deployment_name = deployment_name
@@ -242,13 +243,15 @@ class GPUTool:
 
     @property
     def is_available(self) -> bool:
-        """True if any GPU server hosting this deployment is reachable."""
+        """True if any GPU server hosting this deployment is reachable right now.
+
+        Checks the registry once instead of waiting: the kernel's namespace
+        injection reads every tool attribute, so a blocking check here stalls
+        startup whenever no server hosts this particular tool.
+        """
         if self._deployment_name:
-            try:
-                _get_server_url(_deployment_to_tool(self._deployment_name))
-                return True
-            except RuntimeError:
-                return False
+            tool_name = _deployment_to_tool(self._deployment_name)
+            return _find_alive_server(_read_registry(), tool_name) is not None
         return False
 
     def _call_remote(self, method_name: str, **kwargs) -> Any:
@@ -263,6 +266,7 @@ class GPUTool:
         """
         payload = encode_request(self._deployment_name, method_name, kwargs)
         tool_name = _deployment_to_tool(self._deployment_name)
+        last_exc: Optional[Exception] = None
 
         for attempt in range(self._max_retries):
             try:
@@ -274,7 +278,7 @@ class GPUTool:
                         "Authorization": f"Bearer {auth_token}",
                         "Content-Type": "application/json",
                     },
-                    timeout=_HTTP_TIMEOUT,
+                    timeout=self.HTTP_TIMEOUT,
                 )
 
                 result = decode_response(resp.content)
@@ -287,6 +291,7 @@ class GPUTool:
             except Exception as exc:
                 if _is_application_error(exc):
                     raise
+                last_exc = exc
 
                 if attempt < self._max_retries - 1:
                     backoff = 5 * (2 ** attempt)
@@ -300,7 +305,8 @@ class GPUTool:
 
         raise RuntimeError(
             f"{self.__class__.__name__}.{method_name} is temporarily unavailable. "
-            f"The GPU server may be restarting. Please try again."
+            f"The GPU server may be restarting. Please try again. "
+            f"Last error: {type(last_exc).__name__}: {last_exc}"
         )
 
 

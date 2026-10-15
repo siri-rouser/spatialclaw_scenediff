@@ -183,8 +183,8 @@ def get_launcher(args) -> List[str]:
             '--media-io-kwargs', '{"video": {"num_frames": -1}}',
         ])
 
-    if 'qwen3.5' in model_id:
-        # Qwen3.5 recipe:
+    if 'qwen3.5' in model_id or 'qwen3.6' in model_id:
+        # Qwen3.5 / Qwen3.6 recipe:
         # - reasoning parser improves think/answer handling
         # - expert parallel is only valid for MoE variants
         vllm_args.extend([
@@ -244,6 +244,26 @@ def prepare_envs(num_gpus: int) -> Tuple[Dict[str, str], List[int]]:
     return env, selected_gpus
 
 
+def _read_serve_dict(serve_file: str) -> Dict:
+    """Load serve.json; a missing, empty or corrupt file counts as no records."""
+    try:
+        with open(serve_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except (json.JSONDecodeError, OSError) as e:
+        print(f'[Launcher] Ignoring unreadable {serve_file} ({e}); starting from an empty registry')
+        return {}
+
+
+def _write_serve_dict(serve_file: str, serve_dict: Dict) -> None:
+    """Write via a temp file + rename so a kill mid-write can't leave serve.json empty."""
+    tmp_file = f'{serve_file}.tmp.{os.getpid()}'
+    with open(tmp_file, 'w', encoding='utf-8') as f:
+        json.dump(serve_dict, f, indent=2, ensure_ascii=False)
+    os.replace(tmp_file, serve_file)
+
+
 def setup_record(
     serve_file: str, 
     lock_file: str, 
@@ -253,11 +273,7 @@ def setup_record(
     gpus: List[int],
 ) -> None:
     with FileLock(lock_file):
-        if os.path.exists(serve_file):
-            with open(serve_file, 'r', encoding='utf-8') as f:
-                serve_dict = json.load(f)
-        else:
-            serve_dict = {}
+        serve_dict = _read_serve_dict(serve_file)
         
         model_key = args.model if args.served_model_name is None \
             else args.served_model_name
@@ -277,8 +293,7 @@ def setup_record(
             'slurm_job_id': os.environ.get('SLURM_JOB_ID', None),  # Track SLURM job ID if available
         }
 
-        with open(serve_file, 'w', encoding='utf-8') as f:
-            json.dump(serve_dict, f, indent=2, ensure_ascii=False)
+        _write_serve_dict(serve_file, serve_dict)
 
 
 def cleanup_record(
@@ -288,22 +303,28 @@ def cleanup_record(
     uid: str
 ) -> None:
     with FileLock(lock_file):
-        try:
-            with open(serve_file, 'r+', encoding='utf-8') as f:
-                serve_dict = json.load(f)
+        serve_dict = _read_serve_dict(serve_file)
+        if model in serve_dict and uid in serve_dict[model]:
+            del serve_dict[model][uid]
+            if not serve_dict[model]: 
+                del serve_dict[model]
+            _write_serve_dict(serve_file, serve_dict)
+        else:
+            print(f'[Launcher] Cleanup skipped, no record for {model}/{uid}')
 
-                if model in serve_dict and uid in serve_dict[model]:
-                    del serve_dict[model][uid]
-                    if not serve_dict[model]: 
-                        del serve_dict[model]
 
-                    f.seek(0)
-                    f.truncate()
-                    json.dump(serve_dict, f, indent=2, ensure_ascii=False)
-
-        except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-            print(f'[Launcher] Cleanup skipped, file might be missing, empty or entry not found: {e}')
-            pass
+def stop_orphaned_server(process: subprocess.Popen) -> None:
+    """Stop vLLM if the launcher is exiting while it still runs (e.g. Ctrl-C or a
+    registration error), so it doesn't keep holding GPUs unregistered."""
+    if process.poll() is not None:
+        return
+    print(f'[Launcher] Stopping vLLM server (PID: {process.pid})...', flush=True)
+    process.terminate()
+    try:
+        process.wait(timeout=60)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
 
 
 # ---------------------------------------------------------------------------
@@ -412,6 +433,7 @@ def launch_vllm_server(args: argparse.Namespace):
         finally:
             _keepalive_stop.set()
             if process:
+                stop_orphaned_server(process)
                 print(f'[Launcher] vLLM server (PID: {pid}) has terminated. Cleaning up record.', flush=True)
                 cleanup_record(serve_file, lock_file, model_key, uid)
             else:
@@ -454,6 +476,7 @@ def launch_vllm_server(args: argparse.Namespace):
                 finally:
                     _keepalive_stop.set()
                     if process:
+                        stop_orphaned_server(process)
                         print(f'[Launcher] vLLM server (PID: {pid}) has terminated. Cleaning up record.')
                         cleanup_record(serve_file, lock_file, model_key, uid)
                     else:

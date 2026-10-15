@@ -1,4 +1,4 @@
-"""Standalone GPU server for spatial agent tools (Reconstruct, SAM3).
+"""Standalone GPU server for spatial agent tools (Reconstruct, SAM3, SceneDiff).
 
 Loads GPU models directly in-process and serves them via authenticated JSON RPC.
 Agents discover this server via ``logs/gpu_server.json``.
@@ -7,6 +7,10 @@ Usage::
 
     python -m spatial_agent.entrypoints.launch_gpu_server \
         --num_gpus 1 --reconstruct_backend da3
+
+    # Host only a subset of tools (e.g. SceneDiff on its own GPU):
+    CUDA_VISIBLE_DEVICES=1 python -m spatial_agent.entrypoints.launch_gpu_server \
+        --tools SceneDiff
 """
 
 import argparse
@@ -23,6 +27,7 @@ import socket
 import sys
 import threading
 import time
+import traceback
 import uuid
 from pathlib import Path
 from typing import Any, Dict
@@ -49,27 +54,33 @@ _STARTUP_TIMEOUT_SEC = 600
 _DEPLOYMENT_NAMES = {
     "Reconstruct": "spatial_Reconstruct",
     "SAM3": "spatial_SAM3",
+    "SceneDiff": "spatial_SceneDiff",
 }
+_SCENEDIFF = ("spatial_agent.gpu_models.scene_diff_model", "SceneDiffModel")
 
 # Tool definitions: backend -> {tool_name: (module_path, class_name)}
 _GPU_TOOLS = {
     "pi3": {
         "Reconstruct": ("spatial_agent.gpu_models.pi3_model", "Pi3Model"),
         "SAM3": ("spatial_agent.gpu_models.sam3_model", "SAM3Model"),
+        "SceneDiff": _SCENEDIFF,
     },
     "da3": {
         "Reconstruct": ("spatial_agent.gpu_models.da3_model", "DA3Model"),
         "SAM3": ("spatial_agent.gpu_models.sam3_model", "SAM3Model"),
+        "SceneDiff": _SCENEDIFF,
     },
     "mapanything": {
         "Reconstruct": ("spatial_agent.gpu_models.mapanything_model", "MapAnythingModel"),
         "SAM3": ("spatial_agent.gpu_models.sam3_model", "SAM3Model"),
+        "SceneDiff": _SCENEDIFF,
     },
 }
 
 _ALLOWED_METHODS = {
     "spatial_Reconstruct": frozenset({"reconstruct"}),
     "spatial_SAM3": frozenset({"detect", "segment_video"}),
+    "spatial_SceneDiff": frozenset({"compare"}),
 }
 
 
@@ -283,6 +294,8 @@ def _create_app(models: Dict[str, Any], auth_token: str):
                 result = await asyncio.to_thread(method, **req.get("kwargs", {}))
             return _rpc_response(result)
         except Exception as exc:
+            print(f"[GPU Server] {req['deployment']}.{req['method']} failed:", flush=True)
+            traceback.print_exc()
             return _rpc_response(exc, 500)
 
     return app
@@ -365,12 +378,15 @@ def main():
         default="127.0.0.1",
         help="HTTP bind address (default: 127.0.0.1)",
     )
+    parser.add_argument("--tools", nargs="+", default=list(_DEPLOYMENT_NAMES),
+                        choices=list(_DEPLOYMENT_NAMES),
+                        help="Tools to host (default: all)")
     args = parser.parse_args()
 
     uid = uuid.uuid4().hex[:8]
     http_port = args.http_port or _find_free_port(args.host)
     auth_token = secrets.token_urlsafe(32)
-    tools = ["Reconstruct", "SAM3"]
+    tools = list(args.tools)
 
     print(f"[GPU Server] Starting (uid={uid}, gpus={args.num_gpus}, "
           f"backend={args.reconstruct_backend}, port={http_port})")

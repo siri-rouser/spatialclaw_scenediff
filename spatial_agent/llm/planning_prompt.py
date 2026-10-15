@@ -79,7 +79,7 @@ def build_planning_system_prompt(config, metadata_obj, num_ref_images: int = 0) 
     )
 
     has_gpu_tools = any(
-        t in config.tools_to_use for t in ["Reconstruct", "SAM3"]
+        t in config.tools_to_use for t in ["Reconstruct", "SAM3", "SceneDiff"]
     )
 
     # Build input description from metadata object

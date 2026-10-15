@@ -23,7 +23,7 @@ from spatial_agent.tools.draw_utils import DrawUtils
 class ToolsModule:
     """Assembled tool namespace injected as ``tools`` in the kernel."""
 
-    TOOL_NAMES = ("Reconstruct", "SAM3", "Graph", "Time", "Mask", "Geometry", "Draw")
+    TOOL_NAMES = ("Reconstruct", "SAM3", "SceneDiff", "Graph", "Time", "Mask", "Geometry", "Draw")
 
     def __init__(
         self,
@@ -32,9 +32,11 @@ class ToolsModule:
         input_images=None,
         input_images_list=None,
         video_sources_list=None,
+        session_dir=None,
     ):
         from spatial_agent.tools.reconstruct_tool import ReconstructTool
         from spatial_agent.tools.sam3_tool import SAM3Tool
+        from spatial_agent.tools.scene_diff_tool import SceneDiffTool
 
         gpu_retries = getattr(config, "gpu_tool_max_retries", 3)
         # SAM3 must be created before Reconstruct so the instance is available
@@ -52,6 +54,18 @@ class ToolsModule:
             self.SAM3, config,
             gpu_tool_max_retries=gpu_retries,
             metadata=metadata,
+        )
+
+        videos_meta = getattr(metadata, "videos", None) or []
+        self.SceneDiff = SceneDiffTool(
+            session_dir=session_dir,
+            work_dir=getattr(config, "work_dir", None),
+            video_source=getattr(metadata, "video_source", None),
+            video_sources_list=video_sources_list,
+            fps_per_video=(
+                [v.get("fps") for v in videos_meta] if videos_meta
+                else [metadata.fps]
+            ),
         )
 
         # CPU tools (direct, in-process)
@@ -78,7 +92,7 @@ class ToolsModule:
         ablations = get_config().prompt_section_ablations
 
         tools = [
-            self.Reconstruct, self.SAM3,
+            self.Reconstruct, self.SAM3, self.SceneDiff,
             self.Graph, self.Time, self.Mask, self.Geometry, self.Draw,
         ]
         parts = []
@@ -103,6 +117,7 @@ class ToolsModule:
         from spatial_agent.config import get_config
         from spatial_agent.tools.reconstruct_tool import ReconstructTool
         from spatial_agent.tools.sam3_tool import SAM3Tool
+        from spatial_agent.tools.scene_diff_tool import SceneDiffTool
 
         config = get_config()
         tools_to_use = set(config.tools_to_use or [])
@@ -112,6 +127,7 @@ class ToolsModule:
         gpu_tool_map = {
             "Reconstruct": ReconstructTool,
             "SAM3": SAM3Tool,
+            "SceneDiff": SceneDiffTool,
         }
         # CPU tools: always included
         cpu_classes = [GraphDrawer, TimeUtils, MaskUtils, GeometryUtils, DrawUtils]
@@ -144,9 +160,10 @@ class ToolsModule:
         from spatial_agent.tools.base import get_all_tool_ablation_names
         from spatial_agent.tools.reconstruct_tool import ReconstructTool
         from spatial_agent.tools.sam3_tool import SAM3Tool
+        from spatial_agent.tools.scene_diff_tool import SceneDiffTool
 
         return get_all_tool_ablation_names(
-            ReconstructTool, SAM3Tool,
+            ReconstructTool, SAM3Tool, SceneDiffTool,
             GraphDrawer, TimeUtils, MaskUtils, GeometryUtils, DrawUtils,
         )
 

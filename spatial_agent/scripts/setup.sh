@@ -12,6 +12,7 @@
 #   bash setup.sh --agent    # agent conda env only
 #   bash setup.sh --vllm     # vLLM .venv only
 #   bash setup.sh --cuda     # spatialclaw-cuda CUDA env only
+#   bash setup.sh --scene_diff  # SceneDiff tool extras (into an existing spatialagent env)
 # ============================================================================
 
 set -euo pipefail
@@ -88,9 +89,11 @@ setup_agent() {
     fi
 
     # Install sam3 as editable with all deps (pycocotools, timm, iopath, etc.)
-    if [ -d "$THIRD_PARTY/sam3" ]; then
+    if [ -f "$THIRD_PARTY/sam3/pyproject.toml" ] || [ -f "$THIRD_PARTY/sam3/setup.py" ]; then
         info "Installing sam3 (editable, with dev extras)..."
         pip install --no-user -q -e "$THIRD_PARTY/sam3[dev]"
+    else
+        warn "sam3 submodule not checked out at $THIRD_PARTY/sam3 — skipping"
     fi
 
     # uv is needed to create the vLLM venv later
@@ -225,8 +228,8 @@ setup_cuda() {
 # missed (e.g. someone cloned without --recursive).
 # ---------------------------------------------------------------------------
 
-setup_third_party() {
-    info "=== Initializing third-party submodules and weights ==="
+init_submodules() {
+    info "=== Initializing third-party submodules ==="
 
     if [ -f "$PROJECT_ROOT/.gitmodules" ]; then
         info "Running git submodule update --init --recursive..."
@@ -235,6 +238,10 @@ setup_third_party() {
     else
         warn "No .gitmodules at $PROJECT_ROOT — skipping submodule init"
     fi
+}
+
+setup_third_party() {
+    info "=== Downloading third-party model weights ==="
 
     mkdir -p "$THIRD_PARTY"
 
@@ -278,6 +285,59 @@ setup_third_party() {
 }
 
 # ---------------------------------------------------------------------------
+# SceneDiff tool (tools/third_party/scene_diff): two-video change detection.
+# Installs its extra packages into the existing spatialagent env and fetches
+# its weights into $HF_HOME/scene_diff (keeps large files out of the repo).
+# DINOv3 is gated: request access at https://ai.meta.com/dinov3/ and export
+# SCENEDIFF_DINOV3_URL=<signed vith16plus URL> before running this.
+# ---------------------------------------------------------------------------
+setup_scene_diff() {
+    info "=== Setting up SceneDiff tool ==="
+    local sd_root="$THIRD_PARTY/scene_diff"
+    [ -d "$sd_root" ] || { warn "No $sd_root — clone github.com/yuqunw/scene_diff there first"; return; }
+
+    # Only the dinov3 + SAM submodules are needed; Pi3 comes from tools/third_party/Pi3.
+    if [ -e "$sd_root/.git" ]; then
+        git -C "$sd_root" submodule update --init \
+            submodules/dinov3 submodules/segment-anything-langsplat-modified
+    fi
+
+    conda activate "$CONDA_ENV_NAME"
+    # torch_scatter and open3d are not needed: the GPU wrapper ships a pure-torch
+    # scatter_mean and its own PLY writer (open3d also needs system libEGL).
+    pip install faiss-cpu plyfile pycocotools scikit-image pyyaml
+    conda deactivate
+
+    local weights_dir="${HF_HOME:-$HOME/.cache/huggingface}/scene_diff"
+    mkdir -p "$weights_dir"
+    local sam_ckpt="$weights_dir/sam_vit_h_4b8939.pth"
+    local dino_ckpt="$weights_dir/dinov3_vith16plus_pretrain_lvd1689m-7c1da9a5.pth"
+
+    if [ -s "$sam_ckpt" ]; then
+        ok "SAM ViT-H checkpoint already present"
+    else
+        info "Downloading SAM ViT-H checkpoint..."
+        wget -q -O "$sam_ckpt" https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth
+    fi
+
+    if [ -s "$dino_ckpt" ]; then
+        ok "DINOv3 ViT-H+/16 weights already present"
+    elif [ -n "${SCENEDIFF_DINOV3_URL:-}" ]; then
+        info "Downloading DINOv3 ViT-H+/16 weights..."
+        wget -q -O "$dino_ckpt" "$SCENEDIFF_DINOV3_URL"
+    else
+        warn "DINOv3 weights missing: export SCENEDIFF_DINOV3_URL=<signed URL> and re-run,"
+        warn "  or place the file at $dino_ckpt"
+    fi
+
+    info "Fetching Pi3 weights (yyfz233/Pi3) into the HF cache..."
+    conda run -n "$CONDA_ENV_NAME" python -c \
+        "from huggingface_hub import snapshot_download; snapshot_download('yyfz233/Pi3')" \
+        || warn "Pi3 download failed; it will be retried on first use"
+    ok "SceneDiff ready (weights in $weights_dir)"
+}
+
+# ---------------------------------------------------------------------------
 # 5. Create log directories
 # ---------------------------------------------------------------------------
 setup_dirs() {
@@ -302,21 +362,23 @@ main() {
     check_requirements
 
     # Parse arguments
-    local do_agent=false do_vllm=false do_cuda=false
+    local do_agent=false do_vllm=false do_cuda=false do_scene_diff=false
     if [ $# -eq 0 ]; then
-        do_agent=true; do_vllm=true; do_cuda=true
+        do_agent=true; do_vllm=true; do_cuda=true; do_scene_diff=true
     else
         for arg in "$@"; do
             case "$arg" in
                 --agent) do_agent=true ;;
                 --vllm)  do_vllm=true ;;
                 --cuda)  do_cuda=true ;;
+                --scene_diff) do_scene_diff=true ;;
                 --help|-h)
-                    echo "Usage: bash setup.sh [--agent] [--vllm] [--cuda]"
+                    echo "Usage: bash setup.sh [--agent] [--vllm] [--cuda] [--scene_diff]"
                     echo ""
                     echo "  --agent   Set up the spatialagent conda env (agent + managers + GPU server)"
                     echo "  --vllm    Set up the .venv for vLLM inference server"
                     echo "  --cuda    Set up the spatialclaw-cuda conda env with CUDA toolkit"
+                    echo "  --scene_diff  Install SceneDiff tool deps + weights (needs SCENEDIFF_DINOV3_URL)"
                     echo ""
                     echo "  No flags = install all three environments."
                     exit 0
@@ -326,10 +388,16 @@ main() {
         done
     fi
 
+    # Submodules must be checked out before setup_agent installs sam3 from them.
+    init_submodules
     $do_agent && setup_agent
     $do_cuda  && setup_cuda
     $do_vllm  && setup_vllm
-    setup_third_party
+    # `--scene_diff` alone only adds the SceneDiff extras on top of an existing setup.
+    if $do_agent || $do_vllm || $do_cuda || ! $do_scene_diff; then
+        setup_third_party
+    fi
+    $do_scene_diff && setup_scene_diff
     setup_dirs
 
     echo ""

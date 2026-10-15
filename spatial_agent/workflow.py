@@ -371,6 +371,7 @@ class SpatialAgentWorkflow:
             video_sources_list=(
                 video_sources_per_video if is_multi_video else None
             ),
+            session_dir=session_dir,
         )
 
         # The ReAct baseline restricts output to a single structured tool call
