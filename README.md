@@ -2,22 +2,24 @@
 
 ## Introduction
 
-This project identifies and explains changes in indoor spaces over time. It compares two phone recordings of the same room and detects meaningful 3D changes: moved furniture, newly added obstacles, and removed objects.
+This project uses an agentic AI system to identify and explain changes in indoor spaces over time. It takes **two phone recordings of the same room and a text question** as input—for example, “What changed in the room?”
 
-By aligning recordings taken from different viewpoints into a shared 3D representation, it determines **what** changed and **where**. It separates real changes from differences in viewpoint, occlusion, and incomplete observations, then visualizes the changed objects in 3D and describes them in natural language.
+The agent uses perception tools to gather visual evidence from both recordings, then reasons over **2D observations and 3D change detections together** to determine what changed and where. By combining these complementary sources of evidence, it can distinguish meaningful changes—such as moved furniture, added obstacles, or removed objects—from differences in viewpoint, occlusion, and incomplete observations.
 
-It is built on [SpatialClaw](https://spatialclaw.github.io/) (NVIDIA), extended with [SceneDiff](https://github.com/yuqunw/scene_diff) as a new tool. The original SpatialClaw README is in [SPATIALCLAW_README.md](SPATIALCLAW_README.md).
+The agent framework is built on [SpatialClaw](https://spatialclaw.github.io/), extended with [SceneDiff](https://github.com/yuqunw/scene_diff) as an additional perception tool for 3D change detection. SceneDiff locates potential changes in a shared 3D representation, while the main agent interprets and cross-checks the evidence to produce a natural-language answer. The original SpatialClaw README is in [SPATIALCLAW_README.md](SPATIALCLAW_README.md).
 
 ## Design Choice
 
-The idea comes from my previous work, [TAU-Agent](https://github.com/siri-rouser/TAU-Agent), where I used an agentic system to solve spatial reasoning problems from 2D information only. I wanted to extend this to 3D, which led me to SpatialClaw, an agent that writes and runs Python against perception tools.
+This project builds on the motivation behind my previous work, [TAU-Agent](https://github.com/siri-rouser/TAU-Agent), which used an agentic system to solve spatial reasoning problems using only 2D information. Extending this approach to 3D is a direction I want to explore in future research, so I chose an agentic architecture for this task.
 
-Out of the box, SpatialClaw answers "what changed?" mainly by comparing 2D key frames. That works for simple scenes, but in real-world robotics settings 3D matters: the recordings come from different viewpoints, objects are occluded, and changes need to be located in space.
+Rather than adapting TAU-Agent directly, I chose **SpatialClaw as the foundation** because it already provides 3D perception tools and an agent that can write and run Python to use them. However, in my tests, the agent tended to rely on 2D observations even when 3D information was available, and the existing workflow did not reconstruct both recordings into a shared 3D representation. This motivated adding **SceneDiff as a SpatialClaw tool**, giving the agent explicit change detections grounded in a common 3D space.
 
-So I added **SceneDiff as a SpatialClaw tool**:
+The two components play complementary roles:
 
 - **SceneDiff finds *where* things changed.** It jointly reconstructs both videos into one shared 3D space with [π³](https://github.com/yyfz/Pi3), then combines geometric differences, SAM segmentation and DINOv3 features to detect added, removed and moved objects.
 - **The SpatialClaw agent works out *what* changed.** It inspects SceneDiff's detections, names the objects, discards false positives, cross-checks the original frames, and writes the final answer.
+
+**Trade-off: accuracy versus latency.** In my tests, combining SceneDiff with the agent produced more accurate results than SceneDiff alone. However, the end-to-end workflow took more than five minutes on a server with three NVIDIA A40 GPUs. The current system therefore prioritizes evidence-based analysis over real-time performance; reducing latency remains an important limitation to address.
 
 ## Architecture
 
@@ -87,9 +89,6 @@ See **[HOW_TO_RUN.md](HOW_TO_RUN.md)** for setup, starting the three services (V
 
 Built on [SpatialClaw](https://github.com/NVlabs/SpatialClaw) (© 2026 NVIDIA, NVIDIA Source Code License-NC; see [LICENSE](LICENSE), which this repository inherits) and [SceneDiff](https://github.com/yuqunw/scene_diff) (MIT). It also uses [π³](https://github.com/yyfz/Pi3), [Segment Anything](https://github.com/facebookresearch/segment-anything) and [DINOv3](https://github.com/facebookresearch/dinov3), each under its own license in `tools/third_party/`.
 
-<details>
-<summary>Citations</summary>
-
 ```bibtex
 @article{cho2026spatialclaw,
   title   = {SpatialClaw: Rethinking Action Interface for Agentic Spatial Reasoning},
@@ -109,4 +108,3 @@ Built on [SpatialClaw](https://github.com/NVlabs/SpatialClaw) (© 2026 NVIDIA, N
   year    = {2025}
 }
 ```
-</details>
